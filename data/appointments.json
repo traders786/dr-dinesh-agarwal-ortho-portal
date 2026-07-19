@@ -1,0 +1,32 @@
+[
+  {
+    "id": "appt_1",
+    "name": "Ramesh Sharma",
+    "age": 45,
+    "gender": "Male",
+    "phone": "9876543210",
+    "email": "ramesh@example.com",
+    "type": "Consultation",
+    "clinic": "Momentum Speciality Clinic",
+    "date": "2026-07-20",
+    "timeSlot": "07:00 PM - 07:15 PM",
+    "symptoms": "Severe lower back pain radiating down to the left leg for 3 weeks.",
+    "status": "Approved",
+    "createdAt": "2026-07-19T14:26:14.644Z"
+  },
+  {
+    "id": "appt_2",
+    "name": "Sunita Devi",
+    "age": 58,
+    "gender": "Female",
+    "phone": "8765432109",
+    "email": "sunita@example.com",
+    "type": "Follow-up",
+    "clinic": "Nichtipur Hospital & Research Center",
+    "date": "2026-07-21",
+    "timeSlot": "11:00 AM - 11:15 AM",
+    "symptoms": "Post-operative checkup for spinal decompression surgery.",
+    "status": "Cancelled",
+    "createdAt": "2026-07-19T14:26:14.645Z"
+  }
+]

@@ -1,0 +1,40 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Montserrat:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Playfair Display", Georgia, serif;
+  --font-accent: "Montserrat", sans-serif;
+}
+
+/* Custom visual utility classes for Dr. Dinesh Kumar Agarwal portfolio */
+.font-serif {
+  font-family: var(--font-serif);
+}
+
+.font-accent {
+  font-family: var(--font-accent);
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: #f0f7fb;
+  color: #1a1a2e;
+  overflow-x: hidden;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #f0f7fb;
+}
+::-webkit-scrollbar-thumb {
+  background: #1a7a7a;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #0a2f5a;
+}
+

@@ -1,0 +1,35 @@
+[
+  {
+    "id": "test_1",
+    "name": "Rajesh Mahto",
+    "age": 52,
+    "condition": "Disc Herniation Surgery",
+    "content": "I was unable to walk due to severe sciatica. Dr. Agarwal performed a minimally invasive disc surgery, and I was on my feet the very next day. He is truly a godsend for back pain patients in Dhanbad.",
+    "rating": 5,
+    "initials": "RM",
+    "approved": true,
+    "date": "2026-06-15"
+  },
+  {
+    "id": "test_2",
+    "name": "Anita Sengupta",
+    "age": 64,
+    "condition": "Total Knee Replacement",
+    "content": "Both my knees were severely damaged by arthritis. Dr. Dinesh performed total knee replacements. The care at Momentum Clinic and his surgical skills have given me my active life back. Highly recommended!",
+    "rating": 5,
+    "initials": "AS",
+    "approved": true,
+    "date": "2026-07-02"
+  },
+  {
+    "id": "test_3",
+    "name": "Vikram Singh",
+    "age": 38,
+    "condition": "Scoliosis Correction",
+    "content": "Excellent diagnostic skills and wonderful explanation of the treatment plan. He doesn't rush into surgeries unless absolutely required. My posture has improved tremendously.",
+    "rating": 5,
+    "initials": "VS",
+    "approved": true,
+    "date": "2026-07-10"
+  }
+]
