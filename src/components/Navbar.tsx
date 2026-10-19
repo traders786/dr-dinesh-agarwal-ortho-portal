@@ -48,9 +48,11 @@ export default function Navbar() {
         <div className="flex items-center justify-between">
           {/* Logo & Brand */}
           <Link to="/" className="flex items-center space-x-3 group">
-            <div className="w-10 h-10 rounded-xl bg-[#1A7A7A] flex items-center justify-center text-white shadow-md shadow-[#1A7A7A]/20 transition-transform duration-300 group-hover:rotate-12">
-              <Activity className="w-5 h-5 text-white" />
-            </div>
+            <img
+              src="./logo.jpg"
+              alt="Dr. Dinesh Kumar Agarwal Logo"
+              className="w-10 h-10 rounded-xl object-cover shadow-md transition-transform duration-300 group-hover:scale-105 border border-white/20"
+            />
             <div>
               <span className="block font-serif text-lg sm:text-xl font-bold text-white leading-tight">
                 Dr. Dinesh K. Agarwal

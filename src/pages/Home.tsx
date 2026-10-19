@@ -17,21 +17,28 @@ import {
   Phone
 } from "lucide-react";
 import { Testimonial } from "../types";
-import { api } from "../api";
+import defaultTestimonials from "../../data/testimonials.json";
 
 export default function Home() {
-  const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
+  const [testimonials, setTestimonials] = useState<Testimonial[]>(defaultTestimonials as Testimonial[]);
   const [activeTestimonialIdx, setActiveTestimonialIdx] = useState(0);
 
   useEffect(() => {
-    // Fetch testimonials from API
-    api.getTestimonials()
-      .then((data) => {
-        // Filter only approved ones
-        const approved = data.filter((t: Testimonial) => t.approved);
-        setTestimonials(approved.length > 0 ? approved : data);
+    // Fetch testimonials from API if available
+    fetch("/api/testimonials")
+      .then((res) => {
+        if (!res.ok) throw new Error("Status " + res.status);
+        return res.json();
       })
-      .catch((err) => console.error("Failed to fetch testimonials", err));
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          const approved = data.filter((t: Testimonial) => t.approved);
+          setTestimonials(approved.length > 0 ? approved : data);
+        }
+      })
+      .catch(() => {
+        // Keeps default testimonials loaded
+      });
   }, []);
 
   const trustIndicators = [
@@ -211,9 +218,11 @@ export default function Home() {
               <div className="absolute -inset-y-12 -inset-x-12 bg-gradient-to-r from-transparent via-white/5 to-transparent skew-x-12 translate-x-12 group-hover:translate-x-96 transition-transform duration-1000 ease-out" />
 
               <div className="flex flex-col items-center text-center space-y-4">
-                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#1A7A7A] to-[#E8A838] flex items-center justify-center text-white text-3xl font-serif shadow-inner">
-                  M
-                </div>
+                <img
+                  src="./logo.jpg"
+                  alt="Dr. Dinesh Kumar Agarwal Ortho & Spine Emblem"
+                  className="w-20 h-20 rounded-2xl object-cover shadow-2xl border-2 border-[#E8A838]/40 bg-white p-1"
+                />
                 <div>
                   <h3 className="font-serif text-lg font-bold text-[#E8A838] uppercase tracking-wide">
                     Momentum Clinic

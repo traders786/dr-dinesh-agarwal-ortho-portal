@@ -41,9 +41,11 @@ export default function Footer() {
           {/* Column 1 - Brand Profile */}
           <div className="space-y-4">
             <div className="flex items-center space-x-3">
-              <div className="w-9 h-9 rounded-lg bg-[#1A7A7A] flex items-center justify-center text-white">
-                <Activity className="w-4.5 h-4.5 text-white" />
-              </div>
+              <img
+                src="./logo.jpg"
+                alt="Dr. Dinesh Kumar Agarwal Logo"
+                className="w-10 h-10 rounded-lg object-cover shadow-md border border-white/20"
+              />
               <div>
                 <span className="font-serif text-lg font-bold text-white block">Dr. Dinesh K. Agarwal</span>
                 <span className="text-[10px] text-gray-400 uppercase tracking-widest block font-accent">M.S., DNB (Ortho) · Spine Fellow</span>

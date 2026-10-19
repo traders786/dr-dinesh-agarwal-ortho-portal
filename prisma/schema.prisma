@@ -1,0 +1,68 @@
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model AdminUser {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      String   @default("ADMIN")
+  googleId  String?
+  createdAt DateTime @default(now())
+}
+
+model PatientInquiry {
+  id        String   @id @default(uuid())
+  name      String
+  age       Int
+  gender    String
+  phone     String
+  email     String?
+  type      String
+  clinic    String
+  date      String
+  timeSlot  String
+  symptoms  String
+  status    String   @default("Pending")
+  createdAt DateTime @default(now())
+}
+
+model Testimonial {
+  id        String   @id @default(uuid())
+  name      String
+  age       Int
+  condition String
+  content   String
+  rating    Int      @default(5)
+  initials  String
+  approved  Boolean  @default(true)
+  date      String
+  createdAt DateTime @default(now())
+}
+
+model BlogArticle {
+  id        String   @id @default(uuid())
+  title     String
+  summary   String
+  category  String
+  readTime  String
+  date      String
+  image     String
+  content   String
+  createdAt DateTime @default(now())
+}
+
+model GalleryItem {
+  id          String   @id @default(uuid())
+  title       String
+  category    String
+  image       String
+  description String
+  createdAt   DateTime @default(now())
+}

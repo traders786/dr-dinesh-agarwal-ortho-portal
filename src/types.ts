@@ -44,3 +44,12 @@ export interface GalleryItem {
   image: string;
   description: string;
 }
+
+export interface AdminUser {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  googleId?: string | null;
+  createdAt: string;
+}

@@ -86,8 +86,12 @@ export default function About() {
               <div className="absolute -top-4 -left-4 w-full h-full rounded-3xl border-2 border-[#1A7A7A]/30 z-0" />
               {/* Image Frame */}
               <div className="w-80 h-96 sm:w-96 sm:h-[480px] rounded-3xl bg-gradient-to-br from-[#0A2F5A] to-[#1A7A7A] overflow-hidden shadow-xl z-10 relative flex items-center justify-center text-center p-8 text-white">
-                <div className="space-y-4">
-                  <span className="text-7xl block">👨‍⚕️</span>
+                <div className="space-y-4 flex flex-col items-center">
+                  <img
+                    src="./logo.jpg"
+                    alt="Dr. Dinesh K. Agarwal Logo"
+                    className="w-24 h-24 rounded-2xl object-cover shadow-2xl border-2 border-[#E8A838]/50 bg-white p-1"
+                  />
                   <h3 className="font-serif text-2xl font-bold text-[#E8A838]">Dr. Dinesh K. Agarwal</h3>
                   <p className="text-xs text-gray-300 font-accent uppercase tracking-widest">Consultant Spine Surgeon</p>
                   <p className="text-sm font-light leading-relaxed text-gray-200">

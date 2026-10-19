@@ -14,19 +14,27 @@ import {
   FileSpreadsheet
 } from "lucide-react";
 import { BlogArticle } from "../types";
-import { api } from "../api";
+import defaultBlogs from "../../data/blogs.json";
 
 export default function Resources() {
-  const [blogs, setBlogs] = useState<BlogArticle[]>([]);
+  const [blogs, setBlogs] = useState<BlogArticle[]>(defaultBlogs as BlogArticle[]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [readingBlog, setReadingBlog] = useState<BlogArticle | null>(null);
   const [activeFaqIdx, setActiveFaqIdx] = useState<number | null>(null);
 
   useEffect(() => {
-    api.getBlogs()
-      .then((data) => setBlogs(data))
-      .catch((err) => console.error("Failed to load blog articles", err));
+    fetch("/api/blogs")
+      .then((res) => {
+        if (!res.ok) throw new Error("Status " + res.status);
+        return res.json();
+      })
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) setBlogs(data);
+      })
+      .catch(() => {
+        // Keeps default blogs loaded
+      });
   }, []);
 
   const categories = ["All", "Spine Health", "Joint Care", "Paediatric Ortho"];

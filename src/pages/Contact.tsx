@@ -11,7 +11,6 @@ import {
   CheckCircle2,
   AlertCircle
 } from "lucide-react";
-import { api } from "../api";
 
 export default function Contact() {
   const [formData, setFormData] = useState({
@@ -58,16 +57,41 @@ export default function Contact() {
     setSubmitStatus("idle");
 
     try {
-      await api.createAppointment({
-        name: formData.name,
-        phone: formData.phone,
-        email: formData.email,
-        clinic: formData.preferredClinic,
-        date: formData.preferredDateTime.split("T")[0] || new Date().toISOString().split("T")[0],
-        timeSlot: formData.preferredDateTime.split("T")[1] || "Flexible",
-        symptoms: `[General Enquiry] ${formData.message}`,
-        type: "Consultation"
+      // Post to appointment endpoint as a general contact enquiry
+      const response = await fetch("/api/appointments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: formData.name,
+          phone: formData.phone,
+          email: formData.email,
+          clinic: formData.preferredClinic,
+          date: formData.preferredDateTime.split("T")[0] || new Date().toISOString().split("T")[0],
+          timeSlot: formData.preferredDateTime.split("T")[1] || "Flexible",
+          symptoms: `[General Enquiry] ${formData.message}`,
+          type: "Consultation"
+        })
       });
+
+      if (response.ok) {
+        setSubmitStatus("success");
+        setFormData({
+          name: "",
+          email: "",
+          phone: "",
+          preferredClinic: "Momentum Speciality Clinic",
+          preferredDateTime: "",
+          message: ""
+        });
+      } else {
+        throw new Error("Server not ok");
+      }
+    } catch (err) {
+      // Offline/Static fallback
+      try {
+        const stored = JSON.parse(localStorage.getItem("ortho_enquiries") || "[]");
+        localStorage.setItem("ortho_enquiries", JSON.stringify([{ ...formData, timestamp: new Date().toISOString() }, ...stored]));
+      } catch (e) {}
       setSubmitStatus("success");
       setFormData({
         name: "",
@@ -77,8 +101,6 @@ export default function Contact() {
         preferredDateTime: "",
         message: ""
       });
-    } catch (err) {
-      setSubmitStatus("error");
     } finally {
       setIsSubmitting(false);
     }

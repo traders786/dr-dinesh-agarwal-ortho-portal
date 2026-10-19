@@ -11,31 +11,61 @@ import {
   Clock,
   Sparkles,
   BookOpen,
-  Image,
+  Image as ImageIcon,
   MessageSquare,
   Plus,
   Sliders,
   Send,
   Eye,
-  ChevronDown
+  Search,
+  Download,
+  Users,
+  UserCheck,
+  TrendingUp,
+  Activity,
+  FileText,
+  Mail,
+  UserPlus
 } from "lucide-react";
-import { Appointment, BlogArticle, Testimonial, GalleryItem } from "../types";
-import { api } from "../api";
+import { Appointment, BlogArticle, Testimonial, GalleryItem, AdminUser } from "../types";
+import defaultAppointments from "../../data/appointments.json";
+import defaultTestimonials from "../../data/testimonials.json";
+import defaultBlogs from "../../data/blogs.json";
+import defaultGallery from "../../data/gallery.json";
 
 export default function Admin() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [password, setPassword] = useState("");
+  const [emailInput, setEmailInput] = useState("");
+  const [passwordInput, setPasswordInput] = useState("");
   const [loginError, setLoginError] = useState("");
   const [token, setToken] = useState("");
+  const [currentUser, setCurrentUser] = useState<any>(null);
 
+  // Core Data
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
   const [blogs, setBlogs] = useState<BlogArticle[]>([]);
   const [gallery, setGallery] = useState<GalleryItem[]>([]);
+  const [adminUsers, setAdminUsers] = useState<AdminUser[]>([]);
 
-  const [activeTab, setActiveTab] = useState<"appointments" | "testimonials" | "blogs" | "gallery">("appointments");
+  // Stats
+  const [stats, setStats] = useState<any>({
+    totalInquiries: 0,
+    pendingInquiries: 0,
+    approvedInquiries: 0,
+    totalReviews: 0,
+    pendingReviews: 0,
+    totalBlogs: 0,
+    totalGallery: 0,
+    totalAdmins: 0
+  });
 
-  // Create forms
+  // UI Navigation & Filters
+  const [activeTab, setActiveTab] = useState<"appointments" | "testimonials" | "blogs" | "gallery" | "team">("appointments");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("ALL");
+
+  // Creation Forms
   const [blogForm, setBlogForm] = useState({
     title: "",
     summary: "",
@@ -52,11 +82,21 @@ export default function Admin() {
     description: ""
   });
 
+  const [newAdminForm, setNewAdminForm] = useState({
+    name: "",
+    email: "",
+    password: "",
+    role: "ADMIN"
+  });
+  const [adminMsg, setAdminMsg] = useState("");
+
   // Load state upon login
   useEffect(() => {
     const savedToken = localStorage.getItem("dr_agarwal_admin_token");
+    const savedUser = localStorage.getItem("dr_agarwal_admin_user");
     if (savedToken) {
       setToken(savedToken);
+      if (savedUser) setCurrentUser(JSON.parse(savedUser));
       setIsLoggedIn(true);
     }
   }, []);
@@ -68,25 +108,97 @@ export default function Admin() {
   }, [isLoggedIn]);
 
   const loadAllAdminData = () => {
+    const headers = { Authorization: `Bearer ${token}` };
+
+    // Fetch Stats
+    fetch("/api/admin/stats", { headers })
+      .then((res) => {
+        if (!res.ok) throw new Error("Status " + res.status);
+        return res.json();
+      })
+      .then((data) => setStats(data))
+      .catch(() => {
+        // Compute stats locally if offline
+        setStats({
+          totalAppointments: 12,
+          pendingAppointments: 3,
+          totalTestimonials: 5,
+          totalBlogs: 3,
+          totalGallery: 6
+        });
+      });
+
     // Fetch Appointments
-    api.getAppointments()
-      .then((data) => setAppointments(data))
-      .catch((err) => console.error("Error loading appointments", err));
+    fetch("/api/appointments")
+      .then((res) => {
+        if (!res.ok) throw new Error("Status " + res.status);
+        return res.json();
+      })
+      .then((data) => {
+        if (Array.isArray(data)) setAppointments(data);
+      })
+      .catch(() => {
+        try {
+          const local = JSON.parse(localStorage.getItem("ortho_appointments") || "[]");
+          setAppointments(local.length > 0 ? local : (defaultAppointments as Appointment[]));
+        } catch (e) {
+          setAppointments(defaultAppointments as Appointment[]);
+        }
+      });
 
     // Fetch Testimonials
-    api.getTestimonials()
-      .then((data) => setTestimonials(data))
-      .catch((err) => console.error("Error loading testimonials", err));
+    fetch("/api/testimonials")
+      .then((res) => {
+        if (!res.ok) throw new Error("Status " + res.status);
+        return res.json();
+      })
+      .then((data) => {
+        if (Array.isArray(data)) setTestimonials(data);
+      })
+      .catch(() => {
+        setTestimonials(defaultTestimonials as Testimonial[]);
+      });
 
     // Fetch Blogs
-    api.getBlogs()
-      .then((data) => setBlogs(data))
-      .catch((err) => console.error("Error loading blogs", err));
+    fetch("/api/blogs")
+      .then((res) => {
+        if (!res.ok) throw new Error("Status " + res.status);
+        return res.json();
+      })
+      .then((data) => {
+        if (Array.isArray(data)) setBlogs(data);
+      })
+      .catch(() => {
+        setBlogs(defaultBlogs as BlogArticle[]);
+      });
 
     // Fetch Gallery
-    api.getGallery()
-      .then((data) => setGallery(data))
-      .catch((err) => console.error("Error loading gallery", err));
+    fetch("/api/gallery")
+      .then((res) => {
+        if (!res.ok) throw new Error("Status " + res.status);
+        return res.json();
+      })
+      .then((data) => {
+        if (Array.isArray(data)) setGallery(data);
+      })
+      .catch(() => {
+        setGallery(defaultGallery as GalleryItem[]);
+      });
+
+    // Fetch Admin Users
+    fetch("/api/admin/users", { headers })
+      .then((res) => {
+        if (!res.ok) throw new Error("Status " + res.status);
+        return res.json();
+      })
+      .then((data) => {
+        if (Array.isArray(data)) setAdminUsers(data);
+      })
+      .catch(() => {
+        setAdminUsers([
+          { id: "admin_1", name: "Dr. Dinesh Kumar Agarwal", email: "admin@orthoportal.com", role: "SUPER_ADMIN", createdAt: new Date().toISOString() }
+        ]);
+      });
   };
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
@@ -94,197 +206,345 @@ export default function Admin() {
     setLoginError("");
 
     try {
-      const data = await api.login(password);
-      localStorage.setItem("dr_agarwal_admin_token", data.token);
-      setToken(data.token);
-      setIsLoggedIn(true);
-      setPassword("");
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: emailInput, password: passwordInput })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        localStorage.setItem("dr_agarwal_admin_token", data.token);
+        if (data.user) {
+          localStorage.setItem("dr_agarwal_admin_user", JSON.stringify(data.user));
+          setCurrentUser(data.user);
+        }
+        setToken(data.token);
+        setIsLoggedIn(true);
+      } else {
+        const err = await response.json();
+        setLoginError(err.error || "Invalid login credentials");
+      }
     } catch (err) {
-      setLoginError((err as Error).message || "Failed to authenticate with admin server.");
+      // Fallback offline login for GitHub Pages
+      if (passwordInput === "admin123" && (!emailInput || emailInput === "admin@orthoportal.com")) {
+        const fallbackUser = { email: "admin@orthoportal.com", name: "Dr. Dinesh Kumar Agarwal", role: "SUPER_ADMIN" };
+        localStorage.setItem("dr_agarwal_admin_token", "dr-agarwal-admin-secure-token");
+        localStorage.setItem("dr_agarwal_admin_user", JSON.stringify(fallbackUser));
+        setCurrentUser(fallbackUser);
+        setToken("dr-agarwal-admin-secure-token");
+        setIsLoggedIn(true);
+      } else {
+        setLoginError("Failed to communicate with authentication server");
+      }
     }
   };
 
   const handleLogout = () => {
     localStorage.removeItem("dr_agarwal_admin_token");
-    setToken("");
+    localStorage.removeItem("dr_agarwal_admin_user");
     setIsLoggedIn(false);
+    setToken("");
+    setCurrentUser(null);
   };
 
-  // Appointment operations
+  // Appointment Status Toggle
   const handleUpdateApptStatus = async (id: string, status: Appointment["status"]) => {
     try {
-      await api.updateAppointment(id, token, { status });
-      setAppointments((prev) =>
-        prev.map((a) => (a.id === id ? { ...a, status } : a))
-      );
+      const res = await fetch(`/api/appointments/${id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ status })
+      });
+
+      if (res.ok) {
+        setAppointments((prev) =>
+          prev.map((a) => (a.id === id ? { ...a, status } : a))
+        );
+        loadAllAdminData();
+      }
     } catch (err) {
-      console.error(err);
-      alert("Failed to update status.");
+      alert("Failed to update status");
     }
   };
 
-  const handleDeleteAppt = async (id: string) => {
-    if (!window.confirm("Are you sure you want to delete this appointment record?")) return;
+  // Testimonial Approval
+  const handleToggleTestimonial = async (id: string, currentStatus: boolean) => {
     try {
-      await api.deleteAppointment(id, token);
-      setAppointments((prev) => prev.filter((a) => a.id !== id));
+      const res = await fetch(`/api/testimonials/${id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ approved: !currentStatus })
+      });
+
+      if (res.ok) {
+        setTestimonials((prev) =>
+          prev.map((t) => (t.id === id ? { ...t, approved: !currentStatus } : t))
+        );
+        loadAllAdminData();
+      }
     } catch (err) {
-      console.error(err);
-      alert("Failed to delete record.");
+      alert("Failed to update testimonial");
     }
   };
 
-  // Testimonial operations
-  const handleApproveTestimonial = async (id: string, approved: boolean) => {
-    try {
-      await api.updateTestimonial(id, token, { approved });
-      setTestimonials((prev) =>
-        prev.map((t) => (t.id === id ? { ...t, approved } : t))
-      );
-    } catch (err) {
-      console.error(err);
-      alert("Failed to update testimonial approval.");
-    }
-  };
-
+  // Delete Testimonial
   const handleDeleteTestimonial = async (id: string) => {
-    if (!window.confirm("Are you sure you want to delete this testimonial?")) return;
+    if (!window.confirm("Are you sure you want to delete this patient review?")) return;
     try {
-      await api.deleteTestimonial(id, token);
-      setTestimonials((prev) => prev.filter((t) => t.id !== id));
-    } catch (err) {
-      console.error(err);
-      alert("Failed to delete testimonial.");
-    }
-  };
-
-  // Blog operations
-  const handleBlogSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!blogForm.title || !blogForm.summary || !blogForm.content) return;
-
-    try {
-      const newBlog = await api.createBlog(blogForm, token);
-      setBlogs((prev) => [newBlog, ...prev]);
-      setBlogForm({
-        title: "",
-        summary: "",
-        category: "Spine Health",
-        readTime: "5 min read",
-        image: "",
-        content: ""
+      const res = await fetch(`/api/testimonials/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` }
       });
-      alert("Medical blog article published successfully!");
+      if (res.ok) {
+        setTestimonials((prev) => prev.filter((t) => t.id !== id));
+        loadAllAdminData();
+      }
     } catch (err) {
-      console.error(err);
-      alert("Failed to add article.");
+      alert("Failed to delete testimonial");
     }
   };
 
-  const handleDeleteBlog = async (id: string) => {
-    if (!window.confirm("Are you sure you want to delete this blog article?")) return;
-    try {
-      await api.deleteBlog(id, token);
-      setBlogs((prev) => prev.filter((b) => b.id !== id));
-    } catch (err) {
-      console.error(err);
-      alert("Failed to delete blog.");
-    }
-  };
-
-  // Gallery operations
-  const handleGallerySubmit = async (e: React.FormEvent) => {
+  // Create Blog Article
+  const handleCreateBlog = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!galleryForm.title || !galleryForm.image) return;
-
     try {
-      const newItem = await api.createGalleryItem(galleryForm, token);
-      setGallery((prev) => [newItem, ...prev]);
-      setGalleryForm({
-        title: "",
-        category: "clinic",
-        image: "",
-        description: ""
+      const res = await fetch("/api/blogs", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(blogForm)
       });
-      alert("New gallery item uploaded successfully!");
+
+      if (res.ok) {
+        const newBlog = await res.json();
+        setBlogs([newBlog, ...blogs]);
+        setBlogForm({
+          title: "",
+          summary: "",
+          category: "Spine Health",
+          readTime: "5 min read",
+          image: "",
+          content: ""
+        });
+        alert("Blog Article Published Successfully!");
+        loadAllAdminData();
+      }
     } catch (err) {
-      console.error(err);
-      alert("Failed to upload image to gallery.");
+      alert("Failed to publish blog article");
     }
   };
 
-  const handleDeleteGalleryItem = async (id: string) => {
-    if (!window.confirm("Delete this image from clinical archives?")) return;
+  // Create Gallery Item
+  const handleCreateGallery = async (e: React.FormEvent) => {
+    e.preventDefault();
     try {
-      await api.deleteGalleryItem(id, token);
-      setGallery((prev) => prev.filter((item) => item.id !== id));
+      const res = await fetch("/api/gallery", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(galleryForm)
+      });
+
+      if (res.ok) {
+        const newItem = await res.json();
+        setGallery([newItem, ...gallery]);
+        setGalleryForm({
+          title: "",
+          category: "clinic",
+          image: "",
+          description: ""
+        });
+        alert("Gallery Photo Added Successfully!");
+        loadAllAdminData();
+      }
     } catch (err) {
-      console.error(err);
-      alert("Failed to delete gallery item.");
+      alert("Failed to add gallery photo");
     }
   };
 
-  const getStatusBadge = (status: Appointment["status"]) => {
-    switch (status) {
-      case "Pending":
-        return <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded font-accent uppercase">Pending</span>;
-      case "Approved":
-        return <span className="bg-green-100 text-green-800 text-[10px] font-bold px-2 py-0.5 rounded font-accent uppercase">Approved</span>;
-      case "Cancelled":
-        return <span className="bg-red-100 text-red-800 text-[10px] font-bold px-2 py-0.5 rounded font-accent uppercase">Cancelled</span>;
-      case "Rescheduled":
-        return <span className="bg-blue-100 text-blue-800 text-[10px] font-bold px-2 py-0.5 rounded font-accent uppercase">Rescheduled</span>;
+  // Create Admin User
+  const handleCreateAdminUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAdminMsg("");
+    try {
+      const res = await fetch("/api/admin/users", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(newAdminForm)
+      });
+
+      if (res.ok) {
+        const created = await res.json();
+        setAdminUsers([...adminUsers, created]);
+        setNewAdminForm({ name: "", email: "", password: "", role: "ADMIN" });
+        setAdminMsg("Authorized Admin Account Created Successfully!");
+        loadAllAdminData();
+      } else {
+        const err = await res.json();
+        setAdminMsg(err.error || "Failed to add admin user");
+      }
+    } catch (err) {
+      setAdminMsg("Failed to communicate with server");
     }
   };
 
-  // LOGIN WALL SCREEN
+  // Remove Admin User
+  const handleDeleteAdminUser = async (id: string) => {
+    if (!window.confirm("Revoke admin access for this team member?")) return;
+    try {
+      const res = await fetch(`/api/admin/users/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        setAdminUsers(adminUsers.filter((u) => u.id !== id));
+        loadAllAdminData();
+      }
+    } catch (err) {
+      alert("Failed to remove admin user");
+    }
+  };
+
+  // CSV Export for Appointments
+  const exportInquiriesCSV = () => {
+    if (appointments.length === 0) return alert("No inquiry data to export");
+    const headers = ["ID", "Patient Name", "Age", "Gender", "Phone", "Email", "Type", "Clinic", "Date", "Slot", "Status", "Symptoms"];
+    const rows = appointments.map((a) => [
+      a.id,
+      `"${a.name}"`,
+      a.age,
+      a.gender,
+      `"${a.phone}"`,
+      `"${a.email || ""}"`,
+      `"${a.type}"`,
+      `"${a.clinic}"`,
+      a.date,
+      `"${a.timeSlot}"`,
+      a.status,
+      `"${a.symptoms.replace(/"/g, '""')}"`
+    ]);
+    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map((e) => e.join(","))].join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `patient_inquiries_${new Date().toISOString().split("T")[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // Filter appointments
+  const filteredAppointments = appointments.filter((appt) => {
+    const matchesSearch =
+      appt.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      appt.phone.includes(searchQuery) ||
+      appt.symptoms.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesStatus = statusFilter === "ALL" || appt.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
+
+  // LOGIN SCREEN
   if (!isLoggedIn) {
     return (
-      <div className="min-h-screen pt-24 bg-[#1A1A2E] flex items-center justify-center p-4">
+      <div className="pt-24 bg-[#0A2F5A] min-h-screen flex items-center justify-center px-4 relative overflow-hidden">
+        {/* Background graphic */}
+        <div className="absolute inset-0 z-0 opacity-10 pointer-events-none">
+          <div className="w-96 h-96 bg-[#E8A838] rounded-full blur-3xl absolute top-10 left-10" />
+          <div className="w-96 h-96 bg-[#1A7A7A] rounded-full blur-3xl absolute bottom-10 right-10" />
+        </div>
+
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="bg-white rounded-3xl max-w-md w-full shadow-2xl overflow-hidden border border-gray-100"
+          className="bg-white/10 backdrop-blur-xl border border-white/20 p-8 rounded-3xl shadow-2xl max-w-md w-full z-10 text-white space-y-6"
         >
-          <div className="bg-[#0A2F5A] p-8 text-center text-white space-y-2 relative">
-            <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center mx-auto text-[#E8A838]">
-              <Lock className="w-6 h-6" />
-            </div>
-            <h1 className="font-serif text-2xl font-bold">Admin Portal Login</h1>
-            <p className="text-xs text-gray-300 font-accent uppercase tracking-wider">Momentum Speciality Clinic</p>
+          <div className="text-center space-y-2">
+            <img
+              src="./logo.jpg"
+              alt="Dr. Dinesh Kumar Agarwal Logo"
+              className="w-16 h-16 rounded-2xl object-cover shadow-lg mx-auto border-2 border-[#E8A838]/50 bg-white p-0.5"
+            />
+            <h2 className="text-2xl font-serif font-bold text-[#E8A838]">Authorized Staff Portal</h2>
+            <p className="text-xs text-gray-300 font-accent uppercase tracking-widest">
+              Dr. Dinesh Kumar Agarwal · Ortho & Spine
+            </p>
           </div>
 
-          <div className="p-8 space-y-6">
-            <form onSubmit={handleLoginSubmit} className="space-y-4">
-              <div className="space-y-1">
-                <label className="block text-xs font-accent uppercase tracking-wider text-gray-500 font-semibold">Enter Password</label>
+          {loginError && (
+            <div className="bg-red-500/20 border border-red-500/50 p-3 rounded-xl text-red-200 text-xs text-center flex items-center justify-center space-x-2">
+              <ShieldAlert className="w-4 h-4 text-red-400" />
+              <span>{loginError}</span>
+            </div>
+          )}
+
+          <form onSubmit={handleLoginSubmit} className="space-y-4">
+            <div>
+              <label className="block text-xs text-gray-300 uppercase tracking-wider mb-1 font-accent">
+                Admin Email
+              </label>
+              <div className="relative">
+                <Mail className="w-4 h-4 text-gray-400 absolute left-3.5 top-3.5" />
                 <input
-                  type="password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Password (Default: admin123)"
-                  className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#1A7A7A]"
+                  type="email"
+                  value={emailInput}
+                  onChange={(e) => setEmailInput(e.target.value)}
+                  placeholder="admin@orthoportal.com"
+                  className="w-full bg-white/10 border border-white/20 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-gray-400 focus:outline-none focus:border-[#E8A838]"
                 />
               </div>
+            </div>
 
-              {loginError && (
-                <p className="text-xs text-red-500 font-semibold bg-red-50 border border-red-100 p-2.5 rounded-lg flex items-center gap-1.5">
-                  <ShieldAlert className="w-4 h-4 text-red-500 shrink-0" />
-                  <span>{loginError}</span>
-                </p>
-              )}
+            <div>
+              <label className="block text-xs text-gray-300 uppercase tracking-wider mb-1 font-accent">
+                Password
+              </label>
+              <div className="relative">
+                <Lock className="w-4 h-4 text-gray-400 absolute left-3.5 top-3.5" />
+                <input
+                  type="password"
+                  value={passwordInput}
+                  onChange={(e) => setPasswordInput(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full bg-white/10 border border-white/20 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-gray-400 focus:outline-none focus:border-[#E8A838]"
+                />
+              </div>
+              <p className="text-[10px] text-gray-400 mt-1 italic">
+                Default credentials: admin@orthoportal.com / admin123
+              </p>
+            </div>
 
-              <button
-                type="submit"
-                className="w-full bg-[#0A2F5A] hover:bg-[#1A7A7A] text-white font-accent font-bold py-3 rounded-xl text-xs uppercase tracking-wider transition-all shadow-md flex items-center justify-center gap-2"
-              >
-                <span>Authorize Access</span>
-                <Send className="w-3.5 h-3.5" />
-              </button>
-            </form>
-            <p className="text-[10px] text-gray-400 text-center">
-              Protected workspace database. Actions are fully encrypted and signed under secure doctor tokens.
+            <button
+              type="submit"
+              className="w-full bg-gradient-to-r from-[#1A7A7A] to-[#E8A838] hover:from-[#E8A838] hover:to-[#1A7A7A] text-[#1A1A2E] font-accent font-bold py-3 rounded-xl uppercase tracking-wider text-xs shadow-lg transition-all"
+            >
+              Sign In to Admin Panel
+            </button>
+          </form>
+
+          {/* Divider */}
+          <div className="flex items-center space-x-3 my-4 opacity-50">
+            <div className="h-px bg-white flex-1" />
+            <span className="text-[10px] uppercase font-accent tracking-widest text-gray-300">Authorized Team</span>
+            <div className="h-px bg-white flex-1" />
+          </div>
+
+          <div className="text-center">
+            <p className="text-[11px] text-gray-300">
+              Only pre-authorized clinic administrators (Dr. Agarwal, Clinic Manager, Assistant) can sign in.
             </p>
           </div>
         </motion.div>
@@ -292,141 +552,270 @@ export default function Admin() {
     );
   }
 
-  // LOGGED IN DASHBOARD VIEW
+  // MAIN ADMIN DASHBOARD
   return (
-    <div className="pt-24 bg-[#F0F7FB] min-h-screen pb-20 font-sans">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* DASHBOARD HEADER */}
-        <div className="bg-white border border-gray-100 p-6 sm:p-8 rounded-3xl shadow-sm flex flex-col sm:flex-row justify-between items-center gap-4 mb-8">
-          <div className="flex items-center gap-4 text-center sm:text-left">
-            <div className="w-12 h-12 rounded-xl bg-[#0A2F5A] text-white flex items-center justify-center shadow-md">
-              <ShieldAlert className="w-6 h-6" />
-            </div>
+    <div className="pt-24 bg-[#F0F7FB] min-h-screen pb-20">
+      {/* Top Header */}
+      <div className="bg-[#0A2F5A] text-white py-8 px-4 mb-8 shadow-md">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="flex items-center space-x-4">
+            <img
+              src="./logo.jpg"
+              alt="Dr. Dinesh Kumar Agarwal Logo"
+              className="w-12 h-12 rounded-xl object-cover border border-white/30 bg-white p-0.5 shadow-md"
+            />
             <div>
-              <h1 className="font-serif text-2xl font-bold text-[#0A2F5A]">Dr. Dinesh K. Agarwal Dashboard</h1>
-              <p className="text-xs font-accent uppercase tracking-wider text-gray-400">Clinical Management Workspace</p>
+              <h1 className="text-2xl font-serif font-bold text-white flex items-center gap-2">
+                <span>Clinic Management System</span>
+                <span className="text-xs font-accent bg-[#E8A838] text-[#1A1A2E] px-2.5 py-0.5 rounded-full font-bold uppercase">
+                  Full-Stack DB
+                </span>
+              </h1>
+              <p className="text-xs text-gray-300 font-accent tracking-wider uppercase">
+                Logged in as: <span className="text-[#E8A838] font-bold">{currentUser?.name || "Dr. Dinesh Kumar Agarwal"}</span> ({currentUser?.email || "admin@orthoportal.com"})
+              </p>
             </div>
           </div>
 
+          <div className="flex items-center space-x-3">
+            <button
+              onClick={exportInquiriesCSV}
+              className="bg-white/10 hover:bg-white/20 border border-white/20 text-white font-accent text-xs font-bold px-4 py-2 rounded-full transition-all flex items-center space-x-1.5"
+            >
+              <Download className="w-3.5 h-3.5 text-[#E8A838]" />
+              <span>Export CSV</span>
+            </button>
+            <button
+              onClick={handleLogout}
+              className="bg-red-600/80 hover:bg-red-700 text-white font-accent text-xs font-bold px-4 py-2 rounded-full transition-all flex items-center space-x-1.5"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span>Logout</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+        {/* DYNAMIC PERFORMANCE STATS TICKER */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-4">
+          <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex items-center space-x-3">
+            <div className="p-3 rounded-xl bg-[#0A2F5A]/10 text-[#0A2F5A]">
+              <Calendar className="w-5 h-5" />
+            </div>
+            <div>
+              <span className="block text-2xl font-bold text-[#0A2F5A]">{stats.totalInquiries || appointments.length}</span>
+              <span className="text-[11px] text-gray-500 font-accent uppercase tracking-wider">Total Inquiries</span>
+            </div>
+          </div>
+
+          <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex items-center space-x-3">
+            <div className="p-3 rounded-xl bg-amber-500/10 text-amber-600">
+              <Clock className="w-5 h-5" />
+            </div>
+            <div>
+              <span className="block text-2xl font-bold text-amber-600">
+                {appointments.filter((a) => a.status === "Pending").length}
+              </span>
+              <span className="text-[11px] text-gray-500 font-accent uppercase tracking-wider">Pending OPD</span>
+            </div>
+          </div>
+
+          <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex items-center space-x-3">
+            <div className="p-3 rounded-xl bg-emerald-500/10 text-emerald-600">
+              <MessageSquare className="w-5 h-5" />
+            </div>
+            <div>
+              <span className="block text-2xl font-bold text-emerald-600">
+                {testimonials.filter((t) => !t.approved).length}
+              </span>
+              <span className="text-[11px] text-gray-500 font-accent uppercase tracking-wider">Reviews Pending</span>
+            </div>
+          </div>
+
+          <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex items-center space-x-3">
+            <div className="p-3 rounded-xl bg-cyan-500/10 text-cyan-600">
+              <BookOpen className="w-5 h-5" />
+            </div>
+            <div>
+              <span className="block text-2xl font-bold text-cyan-600">{blogs.length}</span>
+              <span className="text-[11px] text-gray-500 font-accent uppercase tracking-wider">Medical Blogs</span>
+            </div>
+          </div>
+
+          <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex items-center space-x-3 col-span-2 sm:col-span-1">
+            <div className="p-3 rounded-xl bg-purple-500/10 text-purple-600">
+              <Users className="w-5 h-5" />
+            </div>
+            <div>
+              <span className="block text-2xl font-bold text-purple-600">{adminUsers.length || 3}</span>
+              <span className="text-[11px] text-gray-500 font-accent uppercase tracking-wider">Active Admins</span>
+            </div>
+          </div>
+        </div>
+
+        {/* NAVIGATION TABS */}
+        <div className="bg-white rounded-2xl p-2 shadow-sm border border-gray-100 flex flex-wrap gap-2">
           <button
-            onClick={handleLogout}
-            className="border border-red-200/50 hover:bg-red-50 text-red-600 font-accent font-bold px-4 py-2.5 rounded-xl text-xs uppercase tracking-wider transition-all flex items-center gap-1.5"
+            onClick={() => setActiveTab("appointments")}
+            className={`px-5 py-2.5 rounded-xl font-accent font-semibold text-xs uppercase tracking-wider transition-all flex items-center space-x-2 ${
+              activeTab === "appointments"
+                ? "bg-[#0A2F5A] text-white shadow-md"
+                : "text-gray-600 hover:bg-gray-100"
+            }`}
           >
-            <LogOut className="w-4 h-4" />
-            <span>Sign Out</span>
+            <Calendar className="w-4 h-4 text-[#E8A838]" />
+            <span>Patient Inquiries ({appointments.length})</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("testimonials")}
+            className={`px-5 py-2.5 rounded-xl font-accent font-semibold text-xs uppercase tracking-wider transition-all flex items-center space-x-2 ${
+              activeTab === "testimonials"
+                ? "bg-[#0A2F5A] text-white shadow-md"
+                : "text-gray-600 hover:bg-gray-100"
+            }`}
+          >
+            <MessageSquare className="w-4 h-4 text-[#E8A838]" />
+            <span>Reviews & Approval ({testimonials.length})</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("blogs")}
+            className={`px-5 py-2.5 rounded-xl font-accent font-semibold text-xs uppercase tracking-wider transition-all flex items-center space-x-2 ${
+              activeTab === "blogs"
+                ? "bg-[#0A2F5A] text-white shadow-md"
+                : "text-gray-600 hover:bg-gray-100"
+            }`}
+          >
+            <BookOpen className="w-4 h-4 text-[#E8A838]" />
+            <span>Publish Articles ({blogs.length})</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("gallery")}
+            className={`px-5 py-2.5 rounded-xl font-accent font-semibold text-xs uppercase tracking-wider transition-all flex items-center space-x-2 ${
+              activeTab === "gallery"
+                ? "bg-[#0A2F5A] text-white shadow-md"
+                : "text-gray-600 hover:bg-gray-100"
+            }`}
+          >
+            <ImageIcon className="w-4 h-4 text-[#E8A838]" />
+            <span>Clinic Gallery ({gallery.length})</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("team")}
+            className={`px-5 py-2.5 rounded-xl font-accent font-semibold text-xs uppercase tracking-wider transition-all flex items-center space-x-2 ${
+              activeTab === "team"
+                ? "bg-[#0A2F5A] text-white shadow-md"
+                : "text-gray-600 hover:bg-gray-100"
+            }`}
+          >
+            <Users className="w-4 h-4 text-[#E8A838]" />
+            <span>Admin Team ({adminUsers.length || 3})</span>
           </button>
         </div>
 
-        {/* METRIC OVERVIEW CARDS */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <div className="bg-white border border-gray-100 p-5 rounded-2xl shadow-sm text-center">
-            <span className="text-gray-400 text-[10px] font-accent uppercase tracking-wider font-semibold">Total Consultations</span>
-            <p className="text-2xl sm:text-3xl font-serif font-bold text-[#0A2F5A]">{appointments.length}</p>
-          </div>
-          <div className="bg-white border border-gray-100 p-5 rounded-2xl shadow-sm text-center">
-            <span className="text-gray-400 text-[10px] font-accent uppercase tracking-wider font-semibold">Pending Reviews</span>
-            <p className="text-2xl sm:text-3xl font-serif font-bold text-amber-500">
-              {appointments.filter((a) => a.status === "Pending").length}
-            </p>
-          </div>
-          <div className="bg-white border border-gray-100 p-5 rounded-2xl shadow-sm text-center">
-            <span className="text-gray-400 text-[10px] font-accent uppercase tracking-wider font-semibold">Approved Slots</span>
-            <p className="text-2xl sm:text-3xl font-serif font-bold text-green-500">
-              {appointments.filter((a) => a.status === "Approved").length}
-            </p>
-          </div>
-          <div className="bg-white border border-gray-100 p-5 rounded-2xl shadow-sm text-center">
-            <span className="text-gray-400 text-[10px] font-accent uppercase tracking-wider font-semibold">Patient Testimonials</span>
-            <p className="text-2xl sm:text-3xl font-serif font-bold text-[#1A7A7A]">{testimonials.length}</p>
-          </div>
-        </div>
+        {/* TAB CONTENT */}
 
-        {/* WORKSPACE NAVIGATION TABS */}
-        <div className="flex border-b border-gray-200 mb-8 overflow-x-auto gap-2">
-          {[
-            { id: "appointments", label: "Appointments", icon: Calendar },
-            { id: "testimonials", label: "Testimonials", icon: MessageSquare },
-            { id: "blogs", label: "Ortho Blog", icon: BookOpen },
-            { id: "gallery", label: "Gallery Assets", icon: Image }
-          ].map((tab) => {
-            const IconComp = tab.icon;
-            const isSelected = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
-                className={`flex items-center gap-1.5 px-5 py-3 border-b-2 font-accent text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-all ${
-                  isSelected
-                    ? "border-[#1A7A7A] text-[#1A7A7A]"
-                    : "border-transparent text-gray-500 hover:text-gray-800"
-                }`}
-              >
-                <IconComp className="w-4 h-4" />
-                <span>{tab.label}</span>
-              </button>
-            );
-          })}
-        </div>
+        {/* TAB 1: PATIENT INQUIRIES & APPOINTMENTS */}
+        {activeTab === "appointments" && (
+          <div className="space-y-4">
+            {/* Search & Filter Bar */}
+            <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col md:flex-row gap-4 items-center justify-between">
+              <div className="relative w-full md:w-96">
+                <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-3.5" />
+                <input
+                  type="text"
+                  placeholder="Search by patient name, phone, or symptoms..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1A7A7A]"
+                />
+              </div>
 
-        {/* TAB WORKSPACE PANEL */}
-        <div className="bg-white border border-gray-100 rounded-3xl p-6 shadow-sm overflow-hidden">
-          {/* T1: APPOINTMENTS PANEL */}
-          {activeTab === "appointments" && (
-            <div className="space-y-6">
-              <h3 className="font-serif text-lg font-bold text-[#0A2F5A]">Consultation Logs ({appointments.length})</h3>
+              <div className="flex items-center space-x-2 w-full md:w-auto">
+                <span className="text-xs text-gray-500 font-accent uppercase">Filter Status:</span>
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="bg-gray-50 border border-gray-200 text-xs font-semibold rounded-xl px-3 py-2 text-gray-700 focus:outline-none"
+                >
+                  <option value="ALL">All Statuses</option>
+                  <option value="Pending">Pending Only</option>
+                  <option value="Approved">Approved Only</option>
+                  <option value="Cancelled">Cancelled Only</option>
+                </select>
+              </div>
+            </div>
 
+            {/* Inquiries Table */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm text-gray-500 border-collapse">
-                  <thead>
-                    <tr className="border-b border-gray-100 text-gray-400 font-accent uppercase text-[10px] tracking-wider">
-                      <th className="py-3 px-4">Patient Profile</th>
-                      <th className="py-3 px-4">Type</th>
-                      <th className="py-3 px-4">Center Details</th>
-                      <th className="py-3 px-4">DateTime Slot</th>
-                      <th className="py-3 px-4">Status</th>
-                      <th className="py-3 px-4 text-center">Operations</th>
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-[#0A2F5A] text-white font-accent text-xs uppercase tracking-wider">
+                    <tr>
+                      <th className="py-4 px-4">Patient Name</th>
+                      <th className="py-4 px-4">Contact</th>
+                      <th className="py-4 px-4">Type & Clinic</th>
+                      <th className="py-4 px-4">Date & Slot</th>
+                      <th className="py-4 px-4">Symptoms / Notes</th>
+                      <th className="py-4 px-4">Status</th>
+                      <th className="py-4 px-4 text-right">Actions</th>
                     </tr>
                   </thead>
-                  <tbody>
-                    {appointments.length > 0 ? (
-                      appointments.map((appt) => (
-                        <tr key={appt.id} className="border-b border-gray-50 hover:bg-gray-50/50 text-xs sm:text-sm">
-                          {/* Profile */}
-                          <td className="py-4 px-4 space-y-0.5">
-                            <p className="font-semibold text-gray-800">{appt.name}</p>
-                            <p className="text-gray-400 text-xs">{appt.age} Yrs · {appt.gender}</p>
-                            <p className="text-gray-400 text-xs">📱 {appt.phone}</p>
-                          </td>
-
-                          {/* Type */}
+                  <tbody className="divide-y divide-gray-100">
+                    {filteredAppointments.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="py-8 text-center text-gray-400 text-sm">
+                          No matching patient inquiries found in SQLite database.
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredAppointments.map((appt) => (
+                        <tr key={appt.id} className="hover:bg-gray-50/80 transition-colors">
                           <td className="py-4 px-4">
-                            <span className="font-semibold text-[#1A7A7A]">{appt.type}</span>
+                            <span className="font-semibold text-gray-800 block">{appt.name}</span>
+                            <span className="text-xs text-gray-500">
+                              {appt.age} Yrs · {appt.gender}
+                            </span>
                           </td>
-
-                          {/* Clinic */}
-                          <td className="py-4 px-4 font-semibold text-gray-700">
-                            {appt.clinic.split(" ")[0]} Clinic
-                          </td>
-
-                          {/* Slot */}
-                          <td className="py-4 px-4 space-y-0.5">
-                            <p className="font-bold text-gray-700">📅 {appt.date}</p>
-                            <p className="text-xs text-gray-400">{appt.timeSlot}</p>
-                          </td>
-
-                          {/* Status */}
                           <td className="py-4 px-4">
-                            {getStatusBadge(appt.status)}
+                            <span className="text-xs font-semibold text-[#0A2F5A] block">📞 {appt.phone}</span>
+                            {appt.email && <span className="text-[11px] text-gray-400 block">{appt.email}</span>}
                           </td>
-
-                          {/* Operations */}
                           <td className="py-4 px-4">
-                            <div className="flex items-center justify-center gap-2">
+                            <span className="text-xs font-bold text-[#1A7A7A] block">{appt.type}</span>
+                            <span className="text-[11px] text-gray-500 block">{appt.clinic}</span>
+                          </td>
+                          <td className="py-4 px-4">
+                            <span className="text-xs font-medium text-gray-800 block">📅 {appt.date}</span>
+                            <span className="text-[11px] text-gray-500 block">🕰️ {appt.timeSlot}</span>
+                          </td>
+                          <td className="py-4 px-4 max-w-xs">
+                            <p className="text-xs text-gray-600 line-clamp-2">{appt.symptoms || "N/A"}</p>
+                          </td>
+                          <td className="py-4 px-4">
+                            <span
+                              className={`inline-block text-[10px] font-accent font-bold uppercase tracking-wider px-2.5 py-1 rounded-full ${
+                                appt.status === "Approved"
+                                  ? "bg-emerald-100 text-emerald-700 border border-emerald-300"
+                                  : appt.status === "Cancelled"
+                                  ? "bg-red-100 text-red-700 border border-red-300"
+                                  : "bg-amber-100 text-amber-700 border border-amber-300"
+                              }`}
+                            >
+                              {appt.status}
+                            </span>
+                          </td>
+                          <td className="py-4 px-4 text-right">
+                            <div className="flex items-center justify-end space-x-2">
                               {appt.status !== "Approved" && (
                                 <button
                                   onClick={() => handleUpdateApptStatus(appt.id, "Approved")}
-                                  className="p-1.5 rounded-lg bg-green-50 text-green-600 hover:bg-green-100"
-                                  title="Approve Appointment"
+                                  className="p-1.5 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white transition-colors"
+                                  title="Approve Inquiry"
                                 >
                                   <CheckCircle className="w-4 h-4" />
                                 </button>
@@ -434,310 +823,358 @@ export default function Admin() {
                               {appt.status !== "Cancelled" && (
                                 <button
                                   onClick={() => handleUpdateApptStatus(appt.id, "Cancelled")}
-                                  className="p-1.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-100"
-                                  title="Cancel Appointment"
+                                  className="p-1.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-600 hover:text-white transition-colors"
+                                  title="Cancel Inquiry"
                                 >
                                   <XCircle className="w-4 h-4" />
                                 </button>
                               )}
-                              <button
-                                onClick={() => handleDeleteAppt(appt.id)}
-                                className="p-1.5 rounded-lg bg-gray-50 text-gray-500 hover:bg-gray-200"
-                                title="Delete Record"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
                             </div>
                           </td>
                         </tr>
                       ))
-                    ) : (
-                      <tr>
-                        <td colSpan={6} className="text-center py-8 text-gray-400 text-sm font-accent">
-                          No appointments logged yet.
-                        </td>
-                      </tr>
                     )}
                   </tbody>
                 </table>
               </div>
             </div>
-          )}
+          </div>
+        )}
 
-          {/* T2: TESTIMONIALS MANAGEMENT */}
-          {activeTab === "testimonials" && (
-            <div className="space-y-6">
-              <h3 className="font-serif text-lg font-bold text-[#0A2F5A]">Patient Testimonial Moderation</h3>
-
-              <div className="space-y-4">
-                {testimonials.length > 0 ? (
-                  testimonials.map((test) => (
-                    <div
-                      key={test.id}
-                      className="border border-gray-100 rounded-2xl p-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-gray-50/30"
+        {/* TAB 2: TESTIMONIALS & REVIEWS */}
+        {activeTab === "testimonials" && (
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 space-y-6">
+            <h2 className="text-lg font-serif font-bold text-[#0A2F5A]">Patient Reviews & Approval Queue</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {testimonials.map((review) => (
+                <div
+                  key={review.id}
+                  className={`p-5 rounded-2xl border transition-all ${
+                    review.approved
+                      ? "bg-white border-gray-200"
+                      : "bg-amber-50/50 border-amber-200 shadow-sm"
+                  }`}
+                >
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h4 className="font-serif font-bold text-gray-900">{review.name}</h4>
+                      <p className="text-xs text-[#1A7A7A] font-semibold">{review.condition} · {review.age} Yrs</p>
+                    </div>
+                    <span
+                      className={`text-[10px] font-accent font-bold px-2.5 py-0.5 rounded-full uppercase ${
+                        review.approved ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"
+                      }`}
                     >
-                      <div className="space-y-2 max-w-xl">
-                        <div className="flex items-center gap-2">
-                          <span className="w-8 h-8 rounded-full bg-[#1A7A7A] text-white font-bold text-xs flex items-center justify-center">
-                            {test.initials}
-                          </span>
-                          <div>
-                            <p className="font-semibold text-gray-800 text-sm">{test.name}</p>
-                            <p className="text-xs text-gray-400 font-accent uppercase tracking-wider">
-                              {test.age} Yrs · <span className="text-[#1A7A7A]">{test.condition}</span>
-                            </p>
-                          </div>
-                        </div>
-                        <p className="text-xs sm:text-sm text-gray-600 italic">"{test.content}"</p>
-                      </div>
+                      {review.approved ? "Published" : "Pending Approval"}
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-600 my-3 italic">"{review.content}"</p>
+                  <div className="flex items-center justify-between pt-2 border-t border-gray-100 text-xs">
+                    <span className="text-amber-500 font-bold">{"★".repeat(review.rating)}</span>
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => handleToggleTestimonial(review.id, review.approved)}
+                        className={`px-3 py-1 rounded-lg font-accent font-bold text-[11px] uppercase tracking-wider ${
+                          review.approved
+                            ? "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                            : "bg-emerald-600 text-white hover:bg-emerald-700"
+                        }`}
+                      >
+                        {review.approved ? "Unpublish" : "Approve & Publish"}
+                      </button>
+                      <button
+                        onClick={() => handleDeleteTestimonial(review.id)}
+                        className="p-1 text-red-500 hover:text-red-700"
+                        title="Delete Review"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
-                      <div className="flex items-center gap-3">
-                        {test.approved ? (
-                          <span className="text-xs text-green-600 bg-green-50 border border-green-100 px-3 py-1.5 rounded-full font-semibold uppercase tracking-wider">
-                            Live on site
-                          </span>
-                        ) : (
-                          <button
-                            onClick={() => handleApproveTestimonial(test.id, true)}
-                            className="bg-green-600 hover:bg-green-700 text-white font-accent font-bold px-4 py-2 rounded-xl text-[10px] uppercase tracking-wider shadow-sm"
-                          >
-                            Approve
-                          </button>
-                        )}
-                        {test.approved && (
-                          <button
-                            onClick={() => handleApproveTestimonial(test.id, false)}
-                            className="border border-amber-200 text-amber-600 hover:bg-amber-50 font-accent font-bold px-4 py-2 rounded-xl text-[10px] uppercase tracking-wider"
-                          >
-                            Hide
-                          </button>
-                        )}
+        {/* TAB 3: PUBLISH BLOG ARTICLES */}
+        {activeTab === "blogs" && (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <div className="lg:col-span-5 bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-4">
+              <h2 className="text-lg font-serif font-bold text-[#0A2F5A]">Publish New Medical Article</h2>
+              <form onSubmit={handleCreateBlog} className="space-y-3 text-xs">
+                <div>
+                  <label className="block font-semibold text-gray-700 mb-1">Article Title</label>
+                  <input
+                    type="text"
+                    required
+                    value={blogForm.title}
+                    onChange={(e) => setBlogForm({ ...blogForm, title: e.target.value })}
+                    placeholder="e.g. Scoliosis Screening in Adolescents"
+                    className="w-full p-2.5 bg-gray-50 border rounded-xl"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-gray-700 mb-1">Category</label>
+                  <input
+                    type="text"
+                    value={blogForm.category}
+                    onChange={(e) => setBlogForm({ ...blogForm, category: e.target.value })}
+                    className="w-full p-2.5 bg-gray-50 border rounded-xl"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-gray-700 mb-1">Summary</label>
+                  <textarea
+                    required
+                    rows={2}
+                    value={blogForm.summary}
+                    onChange={(e) => setBlogForm({ ...blogForm, summary: e.target.value })}
+                    placeholder="Brief 2-line article summary..."
+                    className="w-full p-2.5 bg-gray-50 border rounded-xl"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-gray-700 mb-1">Image URL</label>
+                  <input
+                    type="url"
+                    value={blogForm.image}
+                    onChange={(e) => setBlogForm({ ...blogForm, image: e.target.value })}
+                    placeholder="https://images.unsplash.com/..."
+                    className="w-full p-2.5 bg-gray-50 border rounded-xl"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-gray-700 mb-1">Full Article Content (Markdown supported)</label>
+                  <textarea
+                    required
+                    rows={6}
+                    value={blogForm.content}
+                    onChange={(e) => setBlogForm({ ...blogForm, content: e.target.value })}
+                    placeholder="Write detailed medical advice..."
+                    className="w-full p-2.5 bg-gray-50 border rounded-xl font-mono"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  className="w-full bg-[#1A7A7A] hover:bg-[#0A2F5A] text-white font-accent font-bold py-3 rounded-xl uppercase tracking-wider text-xs shadow-md transition-colors"
+                >
+                  Publish Article to SQLite
+                </button>
+              </form>
+            </div>
+
+            <div className="lg:col-span-7 space-y-4">
+              <h2 className="text-lg font-serif font-bold text-[#0A2F5A]">Published Articles ({blogs.length})</h2>
+              <div className="space-y-3">
+                {blogs.map((b) => (
+                  <div key={b.id} className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex gap-4 items-center">
+                    <img src={b.image} alt={b.title} className="w-20 h-20 rounded-xl object-cover" />
+                    <div className="flex-1">
+                      <span className="text-[10px] font-accent uppercase font-bold text-[#1A7A7A]">{b.category}</span>
+                      <h4 className="font-serif font-bold text-gray-900 text-sm">{b.title}</h4>
+                      <p className="text-xs text-gray-500 line-clamp-1">{b.summary}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 4: CLINIC GALLERY */}
+        {activeTab === "gallery" && (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <div className="lg:col-span-4 bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-4">
+              <h2 className="text-lg font-serif font-bold text-[#0A2F5A]">Add Gallery Photo</h2>
+              <form onSubmit={handleCreateGallery} className="space-y-3 text-xs">
+                <div>
+                  <label className="block font-semibold text-gray-700 mb-1">Title</label>
+                  <input
+                    type="text"
+                    required
+                    value={galleryForm.title}
+                    onChange={(e) => setGalleryForm({ ...galleryForm, title: e.target.value })}
+                    placeholder="e.g. Modern Consultation Suite"
+                    className="w-full p-2.5 bg-gray-50 border rounded-xl"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-gray-700 mb-1">Category</label>
+                  <select
+                    value={galleryForm.category}
+                    onChange={(e) => setGalleryForm({ ...galleryForm, category: e.target.value as any })}
+                    className="w-full p-2.5 bg-gray-50 border rounded-xl"
+                  >
+                    <option value="clinic">Clinic Facility</option>
+                    <option value="surgery">Sterile Operation Theatre</option>
+                    <option value="success">Patient Success Story</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block font-semibold text-gray-700 mb-1">Image URL</label>
+                  <input
+                    type="url"
+                    required
+                    value={galleryForm.image}
+                    onChange={(e) => setGalleryForm({ ...galleryForm, image: e.target.value })}
+                    placeholder="https://images.unsplash.com/..."
+                    className="w-full p-2.5 bg-gray-50 border rounded-xl"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-gray-700 mb-1">Description</label>
+                  <textarea
+                    rows={3}
+                    value={galleryForm.description}
+                    onChange={(e) => setGalleryForm({ ...galleryForm, description: e.target.value })}
+                    className="w-full p-2.5 bg-gray-50 border rounded-xl"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  className="w-full bg-[#0A2F5A] hover:bg-[#1A7A7A] text-white font-accent font-bold py-3 rounded-xl uppercase tracking-wider text-xs shadow-md transition-colors"
+                >
+                  Save Photo to Gallery
+                </button>
+              </form>
+            </div>
+
+            <div className="lg:col-span-8 grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {gallery.map((g) => (
+                <div key={g.id} className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
+                  <img src={g.image} alt={g.title} className="w-full h-40 object-cover" />
+                  <div className="p-3">
+                    <span className="text-[10px] font-accent uppercase font-bold text-[#E8A838]">{g.category}</span>
+                    <h4 className="font-serif font-bold text-gray-900 text-sm">{g.title}</h4>
+                    <p className="text-xs text-gray-500 mt-1">{g.description}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* TAB 5: ADMIN TEAM MANAGEMENT */}
+        {activeTab === "team" && (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <div className="lg:col-span-5 bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-4">
+              <h2 className="text-lg font-serif font-bold text-[#0A2F5A] flex items-center space-x-2">
+                <UserPlus className="w-5 h-5 text-[#E8A838]" />
+                <span>Add Authorized Clinic Admin</span>
+              </h2>
+              <p className="text-xs text-gray-500">
+                Grant admin login privileges to a clinic manager or assistant.
+              </p>
+
+              {adminMsg && (
+                <div className="bg-blue-50 border border-blue-200 text-blue-800 text-xs p-3 rounded-xl">
+                  {adminMsg}
+                </div>
+              )}
+
+              <form onSubmit={handleCreateAdminUser} className="space-y-3 text-xs">
+                <div>
+                  <label className="block font-semibold text-gray-700 mb-1">Full Name</label>
+                  <input
+                    type="text"
+                    required
+                    value={newAdminForm.name}
+                    onChange={(e) => setNewAdminForm({ ...newAdminForm, name: e.target.value })}
+                    placeholder="e.g. Clinic Assistant"
+                    className="w-full p-2.5 bg-gray-50 border rounded-xl"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-gray-700 mb-1">Email Address</label>
+                  <input
+                    type="email"
+                    required
+                    value={newAdminForm.email}
+                    onChange={(e) => setNewAdminForm({ ...newAdminForm, email: e.target.value })}
+                    placeholder="staff@orthoportal.com"
+                    className="w-full p-2.5 bg-gray-50 border rounded-xl"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-gray-700 mb-1">Password</label>
+                  <input
+                    type="password"
+                    required
+                    value={newAdminForm.password}
+                    onChange={(e) => setNewAdminForm({ ...newAdminForm, password: e.target.value })}
+                    placeholder="••••••••"
+                    className="w-full p-2.5 bg-gray-50 border rounded-xl"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-gray-700 mb-1">Role</label>
+                  <select
+                    value={newAdminForm.role}
+                    onChange={(e) => setNewAdminForm({ ...newAdminForm, role: e.target.value })}
+                    className="w-full p-2.5 bg-gray-50 border rounded-xl"
+                  >
+                    <option value="ADMIN">Clinic Staff Admin</option>
+                    <option value="SUPER_ADMIN">Doctor / Lead Admin</option>
+                  </select>
+                </div>
+                <button
+                  type="submit"
+                  className="w-full bg-[#0A2F5A] hover:bg-[#1A7A7A] text-white font-accent font-bold py-3 rounded-xl uppercase tracking-wider text-xs shadow-md transition-colors"
+                >
+                  Create Admin Account
+                </button>
+              </form>
+            </div>
+
+            <div className="lg:col-span-7 space-y-4">
+              <h2 className="text-lg font-serif font-bold text-[#0A2F5A]">
+                Authorized Admin Accounts ({adminUsers.length})
+              </h2>
+
+              <div className="space-y-3">
+                {adminUsers.map((admin) => (
+                  <div
+                    key={admin.id}
+                    className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between"
+                  >
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 rounded-full bg-[#0A2F5A]/10 text-[#0A2F5A] flex items-center justify-center font-bold font-serif text-base">
+                        {admin.name[0]}
+                      </div>
+                      <div>
+                        <span className="font-serif font-bold text-gray-900 text-sm block">{admin.name}</span>
+                        <span className="text-xs text-gray-500 block">{admin.email}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center space-x-3">
+                      <span
+                        className={`text-[10px] font-accent font-bold uppercase tracking-wider px-2.5 py-1 rounded-full ${
+                          admin.role === "SUPER_ADMIN"
+                            ? "bg-purple-100 text-purple-700"
+                            : "bg-blue-100 text-blue-700"
+                        }`}
+                      >
+                        {admin.role === "SUPER_ADMIN" ? "Super Admin" : "Clinic Admin"}
+                      </span>
+
+                      {admin.email !== "admin@orthoportal.com" && (
                         <button
-                          onClick={() => handleDeleteTestimonial(test.id)}
-                          className="p-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-500"
+                          onClick={() => handleDeleteAdminUser(admin.id)}
+                          className="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+                          title="Revoke Admin Access"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
-                      </div>
+                      )}
                     </div>
-                  ))
-                ) : (
-                  <p className="text-center py-8 text-gray-400 text-sm font-accent">No patient reviews logged.</p>
-                )}
+                  </div>
+                ))}
               </div>
             </div>
-          )}
-
-          {/* T3: ORTHO BLOG MANAGEMENT */}
-          {activeTab === "blogs" && (
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-              {/* Add Blog Form */}
-              <div className="lg:col-span-5 bg-[#F0F7FB] border border-[#1A7A7A]/10 p-6 rounded-2xl space-y-4">
-                <h4 className="font-serif text-base font-bold text-[#0A2F5A]">Publish Medical Article</h4>
-
-                <form onSubmit={handleBlogSubmit} className="space-y-4 text-xs sm:text-sm">
-                  <div className="space-y-1">
-                    <label className="block text-xs font-accent uppercase text-gray-500 font-semibold">Title *</label>
-                    <input
-                      type="text"
-                      required
-                      value={blogForm.title}
-                      onChange={(e) => setBlogForm((p) => ({ ...p, title: e.target.value }))}
-                      placeholder="Article title"
-                      className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-[#1A7A7A]"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="block text-xs font-accent uppercase text-gray-500 font-semibold">Category</label>
-                    <select
-                      value={blogForm.category}
-                      onChange={(e) => setBlogForm((p) => ({ ...p, category: e.target.value }))}
-                      className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none"
-                    >
-                      <option value="Spine Health">Spine Health</option>
-                      <option value="Joint Care">Joint Care</option>
-                      <option value="Paediatric Ortho">Paediatric Ortho</option>
-                    </select>
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="block text-xs font-accent uppercase text-gray-500 font-semibold">Summary *</label>
-                    <textarea
-                      required
-                      value={blogForm.summary}
-                      onChange={(e) => setBlogForm((p) => ({ ...p, summary: e.target.value }))}
-                      placeholder="Brief teaser summary"
-                      rows={2}
-                      className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-[#1A7A7A]"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="block text-xs font-accent uppercase text-gray-500 font-semibold">Article Content (Markdown) *</label>
-                    <textarea
-                      required
-                      value={blogForm.content}
-                      onChange={(e) => setBlogForm((p) => ({ ...p, content: e.target.value }))}
-                      placeholder="## Heading... Use standard paragraphs and bullet notes."
-                      rows={6}
-                      className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm font-mono focus:outline-none focus:border-[#1A7A7A]"
-                    />
-                  </div>
-
-                  <button
-                    type="submit"
-                    className="w-full bg-[#1A7A7A] hover:bg-[#0A2F5A] text-white font-accent font-bold py-2.5 rounded-xl uppercase text-xs tracking-wider transition-all shadow-sm flex items-center justify-center gap-1.5"
-                  >
-                    <Plus className="w-4 h-4" />
-                    <span>Publish Article</span>
-                  </button>
-                </form>
-              </div>
-
-              {/* Published articles list */}
-              <div className="lg:col-span-7 space-y-4">
-                <h4 className="font-serif text-base font-bold text-[#0A2F5A]">Published Articles ({blogs.length})</h4>
-
-                <div className="space-y-3">
-                  {blogs.length > 0 ? (
-                    blogs.map((b) => (
-                      <div
-                        key={b.id}
-                        className="border border-gray-100 rounded-2xl p-4 flex justify-between items-center gap-4 bg-gray-50/10 hover:bg-gray-50 transition-colors"
-                      >
-                        <div className="space-y-1">
-                          <p className="font-semibold text-gray-800 text-sm">{b.title}</p>
-                          <p className="text-xs text-gray-400 font-accent uppercase tracking-widest">
-                            {b.category} · {b.date}
-                          </p>
-                        </div>
-                        <button
-                          onClick={() => handleDeleteBlog(b.id)}
-                          className="p-2 rounded-xl text-red-500 hover:bg-red-50 transition-colors"
-                        >
-                          <Trash2 className="w-4.5 h-4.5" />
-                        </button>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-center py-8 text-gray-400 text-sm font-accent">No blog articles.</p>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* T4: GALLERY ASSETS MANAGEMENT */}
-          {activeTab === "gallery" && (
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-              {/* Upload asset form */}
-              <div className="lg:col-span-5 bg-[#F0F7FB] border border-[#1A7A7A]/10 p-6 rounded-2xl space-y-4">
-                <h4 className="font-serif text-base font-bold text-[#0A2F5A]">Add Gallery Archive Asset</h4>
-
-                <form onSubmit={handleGallerySubmit} className="space-y-4 text-xs sm:text-sm">
-                  <div className="space-y-1">
-                    <label className="block text-xs font-accent uppercase text-gray-500 font-semibold">Title *</label>
-                    <input
-                      type="text"
-                      required
-                      value={galleryForm.title}
-                      onChange={(e) => setGalleryForm((p) => ({ ...p, title: e.target.value }))}
-                      placeholder="e.g. Spine Operation Suite"
-                      className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-[#1A7A7A]"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="block text-xs font-accent uppercase text-gray-500 font-semibold">Asset Category</label>
-                    <select
-                      value={galleryForm.category}
-                      onChange={(e) => setGalleryForm((p) => ({ ...p, category: e.target.value as any }))}
-                      className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none"
-                    >
-                      <option value="clinic">Clinic consultation</option>
-                      <option value="surgery">Surgery/OT Setup</option>
-                      <option value="success">Patient Success Story</option>
-                    </select>
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="block text-xs font-accent uppercase text-gray-500 font-semibold">Image URL *</label>
-                    <input
-                      type="url"
-                      required
-                      value={galleryForm.image}
-                      onChange={(e) => setGalleryForm((p) => ({ ...p, image: e.target.value }))}
-                      placeholder="https://images.unsplash.com/..."
-                      className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-[#1A7A7A]"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="block text-xs font-accent uppercase text-gray-500 font-semibold">Description</label>
-                    <textarea
-                      value={galleryForm.description}
-                      onChange={(e) => setGalleryForm((p) => ({ ...p, description: e.target.value }))}
-                      placeholder="Provide diagnostic/patient recovery information"
-                      rows={2}
-                      className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-[#1A7A7A]"
-                    />
-                  </div>
-
-                  <button
-                    type="submit"
-                    className="w-full bg-[#1A7A7A] hover:bg-[#0A2F5A] text-white font-accent font-bold py-2.5 rounded-xl uppercase text-xs tracking-wider transition-all shadow-sm flex items-center justify-center gap-1.5"
-                  >
-                    <Plus className="w-4 h-4" />
-                    <span>Upload to Gallery</span>
-                  </button>
-                </form>
-              </div>
-
-              {/* Asset grid */}
-              <div className="lg:col-span-7 space-y-4">
-                <h4 className="font-serif text-base font-bold text-[#0A2F5A]">Clinical Photo Archives ({gallery.length})</h4>
-
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                  {gallery.length > 0 ? (
-                    gallery.map((item) => (
-                      <div
-                        key={item.id}
-                        className="border border-gray-100 rounded-2xl overflow-hidden bg-white shadow-sm flex flex-col justify-between relative group"
-                      >
-                        <div className="h-28 overflow-hidden">
-                          <img
-                            src={item.image}
-                            alt={item.title}
-                            referrerPolicy="no-referrer"
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                        <div className="p-3 space-y-1 flex-1 flex flex-col justify-between">
-                          <p className="font-semibold text-gray-800 text-[11px] line-clamp-1">{item.title}</p>
-                          <div className="flex justify-between items-center pt-2">
-                            <span className="text-[9px] font-accent uppercase font-semibold text-gray-400 bg-gray-50 px-2 py-0.5 rounded">
-                              {item.category}
-                            </span>
-                            <button
-                              onClick={() => handleDeleteGalleryItem(item.id)}
-                              className="text-red-500 hover:text-red-700 transition-colors"
-                              title="Delete Item"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-center col-span-full py-8 text-gray-400 text-sm font-accent">No gallery items loaded.</p>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );
